@@ -1,7 +1,7 @@
-﻿namespace DonationHub.Domain.Entities;
+namespace DonationHub.Domain.Entities;
 
 public abstract class CommonData
 {
-    public Guid ID { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public Guid Id { get; protected set; }
+    public DateTime CreatedAt { get; protected set; }
 }
