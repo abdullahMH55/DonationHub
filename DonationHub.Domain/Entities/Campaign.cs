@@ -2,7 +2,7 @@ using DonationHub.Domain.Enums;
 
 namespace DonationHub.Domain.Entities;
 
-public class Campaign : CommonData
+public class Campaign : Enitiy
 {
     public string TitleAr { get; private set; } = string.Empty;
     public string TitleEn { get; private set; } = string.Empty;
@@ -17,5 +17,7 @@ public class Campaign : CommonData
     public Guid CreatedByUserId { get; private set; }
     public DateTime UpdatedAt { get; private set; }
     public bool IsDeleted { get; private set; }
-    public byte[] RowVersion { get; private set; } = [];
+    public byte[] RowVersion { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+
 }
