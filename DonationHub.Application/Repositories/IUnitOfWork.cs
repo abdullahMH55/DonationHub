@@ -1,0 +1,6 @@
+﻿namespace DonationHub.Application.Repositories;
+
+public interface IUnitOfWork : IDisposable
+{
+    Task<int> CompleteAsync(CancellationToken cancellationToken = default);
+}

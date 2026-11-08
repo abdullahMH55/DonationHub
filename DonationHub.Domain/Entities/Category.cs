@@ -1,6 +1,7 @@
 namespace DonationHub.Domain.Entities;
+using DonationHub.Domain.Common;
 
-public class Category : Enitiy
+public class Category : Entity
 { 
     public string NameAr { get; private set; } = string.Empty;
     public string NameEn { get; private set; } = string.Empty;
@@ -8,47 +9,46 @@ public class Category : Enitiy
     public string DescriptionEn { get; private set; } = string.Empty;
     public DateTime UpdatedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
-
+    
+    public Category() { }
+    
     private Category(string nameAr, string nameEn, string descriptionAr, string descriptionEn, DateTime time)
     {
-        NameAr  = nameAr;
+        NameAr = nameAr;
         NameEn = nameEn;
         DescriptionAr = descriptionAr;
         DescriptionEn = descriptionEn;
         CreatedAt = time;
+        UpdatedAt = time;
     }
-    
-    
     public static Category Create(string nameAr, string nameEn, string descriptionAr, string descriptionEn, DateTime time)
     {
-        if(nameAr.Length > 100 || string.IsNullOrEmpty(nameAr))
-            throw new ArgumentNullException("nameAr", "Name cannot be more than 100 characters or empty");
+        if (string.IsNullOrWhiteSpace(nameAr) || nameAr.Length > 100)
+            throw new ArgumentException("Name cannot be more than 100 characters or empty");
         
-        if(nameEn.Length > 100 || string.IsNullOrEmpty(nameAr))
-            throw new ArgumentNullException("nameEr", "Name cannot be more than 100 characters or empty");
+        if (string.IsNullOrWhiteSpace(nameEn) || nameEn.Length > 100)
+            throw new ArgumentException("Name cannot be more than 100 characters or empty");
         
-        
-        var result = new Category(nameAr, nameEn, descriptionAr, descriptionEn, time);
-        return result;
+        return new Category(nameAr, nameEn, descriptionAr, descriptionEn, time);
     }
     
     public void UpdateName(string nameAr, string nameEn, DateTime time)
     {
-        if(nameAr.Length > 100 || string.IsNullOrEmpty(nameAr))
-            throw new ArgumentNullException("nameAr", "Name cannot be more than 100 characters or empty");
+        if (string.IsNullOrWhiteSpace(nameAr) || nameAr.Length > 100)
+            throw new ArgumentException("Name cannot be more than 100 characters or empty");
         
-        if(nameEn.Length > 100 || string.IsNullOrEmpty(nameAr))
-            throw new ArgumentNullException("nameEr", "Name cannot be more than 100 characters or empty");
+        if (string.IsNullOrWhiteSpace(nameEn) || nameEn.Length > 100)
+            throw new ArgumentException("Name cannot be more than 100 characters or empty");
         
-        this.NameAr =  nameAr;
-        this.NameEn = nameEn;
-        this.UpdatedAt = time;
+        NameAr = nameAr;
+        NameEn = nameEn;
+        UpdatedAt = time;
     }
+
     public void UpdateDescription(string descriptionAr, string descriptionEn, DateTime time)
     {
-        
-        this.DescriptionAr = descriptionAr;
-        this.DescriptionEn = descriptionEn;
-        this.UpdatedAt = DateTime.UtcNow;
+        DescriptionAr = descriptionAr;
+        DescriptionEn = descriptionEn;
+        UpdatedAt = time;
     }
 }

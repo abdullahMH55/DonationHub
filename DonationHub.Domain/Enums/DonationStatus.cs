@@ -4,6 +4,5 @@ public enum DonationStatus
 {
     Pending,
     Succeeded,
-    Failed,
-    Refunded
+    Failed
 }

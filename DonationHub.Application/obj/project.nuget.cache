@@ -1,8 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "HBACg2dj0RM=",
+  "dgSpecHash": "2XybjODn84A=",
   "success": true,
   "projectFilePath": "D:\\Programming\\Tawjeh\\DonationHub\\DonationHub\\DonationHub.Application\\DonationHub.Application.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\bm756\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\10.0.14\\microsoft.extensions.dependencyinjection.abstractions.10.0.14.nupkg.sha512"
+  ],
   "logs": []
 }

@@ -10,10 +10,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("1b8f4390-018a-4f45-bd9d-9b3ad34e6ee7")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("DonationHub.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9d70cf68da01e6003eb9930c79281c34ad6fb559")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d5207431bbedb588c8436ab1f43f7b90281f9e3d")]
 [assembly: System.Reflection.AssemblyProductAttribute("DonationHub.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DonationHub.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

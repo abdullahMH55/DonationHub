@@ -2,4 +2,4 @@
 
 namespace DonationHub.Domain.Value_Objects;
 
-public record Money(int  Amount, Currency? Currency);
+public record Money(decimal  Amount, Currency? Currency);
