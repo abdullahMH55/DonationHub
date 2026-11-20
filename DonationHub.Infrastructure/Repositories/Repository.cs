@@ -12,14 +12,14 @@ public class BaseRepository<T> : IBaseRepository<T> where T : Entity
     {
         _dbContext = dbContext;
     }
-    public async Task<T> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Set<T>().FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
     }
 
     public async Task<IReadOnlyList<T>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        return  _dbContext.Set<T>().ToList();
+        return await _dbContext.Set<T>().AsNoTracking().ToListAsync(cancellationToken);
     }
 
     public async Task AddAsync(T entity, CancellationToken cancellationToken = default)

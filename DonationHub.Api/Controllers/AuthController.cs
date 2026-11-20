@@ -1,9 +1,15 @@
 using System.Security.Claims;
-using DonationHub.Application.Services;
+using DonationHub.Api.Extensions;
+using DonationHub.Application.ErrorCatalogue;
+using DonationHub.Application.Features.Auth.Commands.Login;
+using DonationHub.Application.Features.Auth.Commands.Logout;
+using DonationHub.Application.Features.Auth.Commands.RefreshToken;
+using DonationHub.Application.Features.Auth.Commands.Register;
 using DonationHub.Application.Features.Auth.DTO;
-using DonationHub.Infrastructure.Identity;
+using DonationHub.Application.Features.Auth.Queries.GetCurrentUser;
+using DonationHub.Domain.ResultHandling;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DonationHub.Api.Controllers;
@@ -12,86 +18,50 @@ namespace DonationHub.Api.Controllers;
 [Route("api/v1/auth")]
 public class AuthController : ControllerBase
 {
-    private readonly IAuthService _authService;
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IMediator _mediator;
 
-    public AuthController(IAuthService authService, UserManager<ApplicationUser> userManager)
+    public AuthController(IMediator mediator)
     {
-        _authService = authService;
-        _userManager = userManager;
+        _mediator = mediator;
     }
 
     [HttpPost("register")]
-    public async Task<IActionResult> Register(RegisterRequest request)
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
     {
-        var result = await _authService.RegisterAsync(request);
-        if (!result.Success)
-        {
-            return BadRequest(result);
-        }
-        return Ok(result);
+        var result = await _mediator.Send(new RegisterCommand(request), cancellationToken);
+        return result.ToActionResult(HttpContext);
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login(LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
-        var result = await _authService.LoginAsync(request);
-        if (!result.Success)
-        {
-            return Unauthorized(result);
-        }
-        return Ok(result);
+        var result = await _mediator.Send(new LoginCommand(request), cancellationToken);
+        return result.ToActionResult(HttpContext);
     }
 
     [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh(RefreshTokenRequest request)
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request, CancellationToken cancellationToken)
     {
-        var result = await _authService.RefreshTokenAsync(request.RefreshToken);
-        if (!result.Success)
-        {
-            return Unauthorized(result);
-        }
-        return Ok(result);
+        var result = await _mediator.Send(new RefreshTokenCommand(request.RefreshToken), cancellationToken);
+        return result.ToActionResult(HttpContext);
     }
 
     [Authorize]
     [HttpPost("logout")]
-    public async Task<IActionResult> Logout(RefreshTokenRequest request)
+    public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest request, CancellationToken cancellationToken)
     {
-        var revoked = await _authService.RevokeTokenAsync(request.RefreshToken);
-        if (!revoked)
-        {
-            return BadRequest();
-        }
-        return NoContent();
-    }
+        var result = await _mediator.Send(new LogoutCommand(request.RefreshToken), cancellationToken);
+        return result.ToActionResult(HttpContext);    }
 
     [Authorize]
     [HttpGet("me")]
-    public async Task<IActionResult> GetCurrentUser()
+    public async Task<IActionResult> GetCurrentUser(CancellationToken cancellationToken)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-        {
-            return Unauthorized();
-        }
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdValue, out var userId))
+            return Result.Failure(AuthErrors.Unauthorized).ToActionResult(HttpContext);
 
-        var user = await _userManager.FindByIdAsync(userId);
-        if (user == null)
-        {
-            return NotFound();
-        }
-
-        var roles = await _userManager.GetRolesAsync(user);
-
-        return Ok(new
-        {
-            user.Id,
-            user.Email,
-            user.FullName,
-            user.UserName,
-            user.PreferredLanguage,
-            Roles = roles
-        });
+        var result = await _mediator.Send(new GetCurrentUserQuery(userId), cancellationToken);
+        return result.ToActionResult(HttpContext);
     }
 }

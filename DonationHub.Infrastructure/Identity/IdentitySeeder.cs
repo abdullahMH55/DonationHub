@@ -9,15 +9,16 @@ public class IdentitySeeder
     private readonly SeedAdminOptions _adminOptions;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+    private readonly TimeProvider _timeProvider;
 
     public IdentitySeeder(
-        IOptions<SeedAdminOptions> adminOptions,
-        RoleManager<IdentityRole<Guid>> roleManager,
-        UserManager<ApplicationUser> userManager)
+        IOptions<SeedAdminOptions> adminOptions, RoleManager<IdentityRole<Guid>> roleManager,
+        UserManager<ApplicationUser> userManager,TimeProvider timeProvider)
     {
         _adminOptions = adminOptions.Value;
         _userManager = userManager;
         _roleManager = roleManager;
+        _timeProvider = timeProvider;
     }
 
     public async Task SeedAsync()
@@ -37,10 +38,11 @@ public class IdentitySeeder
             var adminUser = new ApplicationUser
             {
                 Id = Guid.NewGuid(),
+                UserName = _adminOptions.Email,
                 Email = _adminOptions.Email,
                 FullName = _adminOptions.FullName,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
             };
 
             if ((await _userManager.CreateAsync(adminUser, _adminOptions.Password)).Succeeded)

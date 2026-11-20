@@ -1,7 +1,8 @@
+using DonationHub.Api.Extensions;
+using DonationHub.Application.Features.Admin.Commands.CreateStaff;
 using DonationHub.Application.Features.Auth.DTO;
-using DonationHub.Infrastructure.Identity;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DonationHub.Api.Controllers;
@@ -11,45 +12,18 @@ namespace DonationHub.Api.Controllers;
 [Authorize(Roles = "Admin")]
 public class AdminController : ControllerBase
 {
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IMediator _mediator;
 
-    public AdminController(UserManager<ApplicationUser> userManager)
+    public AdminController(IMediator mediator)
     {
-        _userManager = userManager;
+        _mediator = mediator;
     }
 
     [HttpPost("staff")]
-    public async Task<IActionResult> CreateStaff(CreateStaffRequest request)
+    public async Task<IActionResult> CreateStaff([FromBody] CreateStaffRequest request, CancellationToken cancellationToken)
     {
-        if (request.Role != "Admin" && request.Role != "CampaignManager")
-        {
-            return BadRequest();
-        }
+        var result = await _mediator.Send(new CreateStaffCommand(request), cancellationToken);
+        return result.ToActionResult(HttpContext);
 
-        var existingUser = await _userManager.FindByEmailAsync(request.Email);
-        if (existingUser != null)
-        {
-            return Conflict();
-        }
-
-        var user = new ApplicationUser
-        {
-            Id = Guid.NewGuid(),
-            UserName = request.UserName,
-            Email = request.Email,
-            FullName = request.FullName,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var result = await _userManager.CreateAsync(user, request.Password);
-        if (!result.Succeeded)
-        {
-            return BadRequest(result.Errors);
-        }
-
-        await _userManager.AddToRoleAsync(user, request.Role);
-        
-        return Ok(new { userId = user.Id });
     }
 }

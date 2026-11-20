@@ -1,5 +1,7 @@
 using DonationHub.Domain.Common;
 using DonationHub.Domain.Enums;
+using DonationHub.Domain.Errors;
+using DonationHub.Domain.ResultHandling;
 
 namespace DonationHub.Domain.Entities;
 
@@ -19,11 +21,11 @@ public class Campaign : Entity, ISoftDeletable
     public DateTime UpdatedAt { get; private set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
-    public byte[] RowVersion { get; private set; }
+    public byte[] RowVersion { get; private set; } = Array.Empty<byte>();
     public DateTime CreatedAt { get; private set; }
     
     
-    public Category Category { get; set; }
+    public Category Category { get; set; } = null!;
 
     private Campaign() { }
 
@@ -41,48 +43,90 @@ public class Campaign : Entity, ISoftDeletable
         BannerFileName = bannerFileName;
         Status = CampaignStatus.Active;
         CreatedAt = time;
+        UpdatedAt = time;
         IsDeleted = false;
     }
 
-    public static Campaign Create(string titleAr, string titleEn, string descriptionAr, string descriptionEn, decimal goalAmount, DateTime endDate, Guid categoryId, Guid createdByUserId, DateTime time, string? bannerFileName = null)
+    public static Result<Campaign> Create(string titleAr, string titleEn, string descriptionAr, string descriptionEn, decimal goalAmount, DateTime endDate, Guid categoryId, Guid createdByUserId, DateTime time, string? bannerFileName = null)
     {
-        if (string.IsNullOrWhiteSpace(titleAr))
-            throw new ArgumentException("Title in Arabic is required");
-        if (string.IsNullOrWhiteSpace(titleEn))
-            throw new ArgumentException("Title in English is required");
-        
-        if (goalAmount <= 0)
-            throw new ArgumentException("Goal amount must be greater than zero");
-        
-        if (endDate <= time)
-            throw new ArgumentException("End date must be in the future");
+        if (string.IsNullOrWhiteSpace(titleAr) || string.IsNullOrWhiteSpace(titleEn))
+            return Result<Campaign>.Failure([CampaignDomainErrors.InvalidInput]);
 
-        return new Campaign(titleAr, titleEn, descriptionAr, descriptionEn, goalAmount, endDate, categoryId, createdByUserId, time, bannerFileName);
+        if (goalAmount <= 0)
+            return Result<Campaign>.Failure([CampaignDomainErrors.GoalMustBePositive]);
+
+        if (endDate <= time)
+            return Result<Campaign>.Failure([CampaignDomainErrors.EndDateInPast]);
+
+        return Result<Campaign>.Success(new Campaign(titleAr, titleEn, descriptionAr, descriptionEn, goalAmount, endDate, categoryId, createdByUserId, time, bannerFileName));
     }
-    
-    public void UpdateGoal(decimal newGoal, DateTime time)
+
+    public Result<Campaign> Update(
+        string titleAr,
+        string titleEn,
+        string descriptionAr,
+        string descriptionEn,
+        decimal goalAmount,
+        DateTime endDate,
+        Guid categoryId,
+        DateTime time)
     {
-        CheckAvaliable();
+        if (Status != CampaignStatus.Active)
+            return Result<Campaign>.Failure([CampaignDomainErrors.NotActive]);
+
+        if (string.IsNullOrWhiteSpace(titleAr) || string.IsNullOrWhiteSpace(titleEn))
+            return Result<Campaign>.Failure([CampaignDomainErrors.InvalidInput]);
+
+        if (goalAmount <= 0)
+            return Result<Campaign>.Failure([CampaignDomainErrors.GoalMustBePositive]);
+
+        if (endDate <= time)
+            return Result<Campaign>.Failure([CampaignDomainErrors.EndDateInPast]);
+
+        if (goalAmount < RaisedAmount)
+            return Result<Campaign>.Failure([CampaignDomainErrors.GoalBelowRaised]);
+
+        TitleAr = titleAr;
+        TitleEn = titleEn;
+        DescriptionAr = descriptionAr;
+        DescriptionEn = descriptionEn;
+        GoalAmount = goalAmount;
+        EndDate = endDate;
+        CategoryId = categoryId;
+        UpdatedAt = time;
+
+        return Result<Campaign>.Success(this);
+    }
+
+    public Result<Campaign> UpdateGoal(decimal newGoal, DateTime time)
+    {
+        if (Status != CampaignStatus.Active)
+            return Result<Campaign>.Failure([CampaignDomainErrors.NotActive]);
 
         if (newGoal <= 0)
-            throw new ArgumentException("Goal amount must be greater than zero");
+            return Result<Campaign>.Failure([CampaignDomainErrors.GoalMustBePositive]);
 
         if (newGoal < RaisedAmount)
-            throw new InvalidOperationException("Goal amount cannot be lowered below the current raised amount");
+            return Result<Campaign>.Failure([CampaignDomainErrors.GoalBelowRaised]);
 
         GoalAmount = newGoal;
         UpdatedAt = time;
+
+        return Result<Campaign>.Success(this);
     }
-    
-    public void UpdateEndDate(DateTime newEndDate, DateTime time)
+
+    public Result<Campaign> UpdateEndDate(DateTime newEndDate, DateTime time)
     {
-        CheckAvaliable();
+        if (Status != CampaignStatus.Active)
+            return Result<Campaign>.Failure([CampaignDomainErrors.NotActive]);
 
         if (newEndDate <= time)
-            throw new ArgumentException("End date must be in the future");
+            return Result<Campaign>.Failure([CampaignDomainErrors.EndDateInPast]);
 
         EndDate = newEndDate;
         UpdatedAt = time;
+
+        return Result<Campaign>.Success(this);
     }
 
     public bool Avaliable(DateTime time)
@@ -90,21 +134,20 @@ public class Campaign : Entity, ISoftDeletable
         return Status == CampaignStatus.Active && EndDate > time;
     }
 
-    public void ApplyRaisedAmount(Donation donation ,decimal raisedAmount, DateTime time)
+    public void ApplyRaisedAmount(Donation donation, decimal raisedAmount, DateTime time)
     {
-        if(donation.Status != DonationStatus.Succeeded)
+        if (donation.Status != DonationStatus.Succeeded)
             throw new ArgumentException("The donation process not successful");
-        
+
         if (!Avaliable(time))
             throw new InvalidOperationException("Campaign cannot accept donations because it is not active or has expired");
-            
+
         if (raisedAmount <= 0)
             throw new ArgumentException("Donation amount must be greater than zero");
 
-
         RaisedAmount += raisedAmount;
         UpdatedAt = time;
-        
+
         if (RaisedAmount >= GoalAmount)
         {
             Status = CampaignStatus.Completed;
@@ -121,7 +164,7 @@ public class Campaign : Entity, ISoftDeletable
         Status = CampaignStatus.Expired;
         UpdatedAt = time;
     }
-    
+
     public void SoftDelete(DateTime time)
     {
         IsDeleted = true;

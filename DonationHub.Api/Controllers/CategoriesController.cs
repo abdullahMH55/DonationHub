@@ -1,8 +1,10 @@
-using DonationHub.Application.Features.Categories.Create;
-using DonationHub.Application.Features.Categories.Delete;
-using DonationHub.Application.Features.Categories.GetAll;
-using DonationHub.Application.Features.Categories.GetById;
-using DonationHub.Application.Features.Categories.Update;
+using DonationHub.Api.Extensions;
+using DonationHub.Application.Features.Categories.Command.Create;
+using DonationHub.Application.Features.Categories.Command.Delete;
+using DonationHub.Application.Features.Categories.Command.Update;
+using DonationHub.Application.Features.Categories.Query.GetAll;
+using DonationHub.Application.Features.Categories.Query.GetById;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,93 +14,49 @@ namespace DonationHub.Api.Controllers;
 [Route("api/v1/categories")]
 public class CategoriesController : ControllerBase
 {
-    private readonly CreateCategoryHandler _createHandler;
-    private readonly UpdateCategoryHandler _updateHandler;
-    private readonly DeleteCategoryHandler _deleteHandler;
-    private readonly GetCategoryByIdHandler _getByIdHandler;
-    private readonly GetAllCategoriesHandler _getAllHandler;
+    private readonly IMediator _mediator;
 
-    public CategoriesController(
-        CreateCategoryHandler createHandler,
-        UpdateCategoryHandler updateHandler,
-        DeleteCategoryHandler deleteHandler,
-        GetCategoryByIdHandler getByIdHandler,
-        GetAllCategoriesHandler getAllHandler)
+    public CategoriesController(IMediator mediator)
     {
-        _createHandler = createHandler;
-        _updateHandler = updateHandler;
-        _deleteHandler = deleteHandler;
-        _getByIdHandler = getByIdHandler;
-        _getAllHandler = getAllHandler;
+        _mediator = mediator;
     }
 
     [HttpGet]
     [AllowAnonymous]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
-        var categories = await _getAllHandler.HandleAsync();
-        return Ok(categories);
-    }
+        var result = await _mediator.Send(new GetAllCategoriesQuery(), cancellationToken);
+        return result.ToActionResult(HttpContext);    }
 
     [HttpGet("{id:guid}")]
     [AllowAnonymous]
-    public async Task<IActionResult> GetById(Guid id)
+    public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var category = await _getByIdHandler.HandleAsync(id);
-        if (category == null)
-        {
-            return NotFound();
-        }
-        return Ok(category);
-    }
+        var result = await _mediator.Send(new GetCategoryByIdQuery(id), cancellationToken);
+        return result.ToActionResult(HttpContext);    }
 
     [HttpPost]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Create([FromBody] CreateCategoryRequest request)
+    public async Task<IActionResult> Create([FromBody] CreateCategoryRequest request, CancellationToken cancellationToken)
     {
-        var category = await _createHandler.HandleAsync(request);
-        if (category == null)
-        {
-            return Conflict();
-        }
-        return CreatedAtAction(nameof(GetById), new { id = category.Id }, category);
+        var result = await _mediator.Send(new CreateCategoryCommand(request), cancellationToken);
+        return result.ToActionResult(HttpContext);
     }
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCategoryRequest request)
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCategoryRequest request, CancellationToken cancellationToken)
     {
-        var existing = await _getByIdHandler.HandleAsync(id);
-        if (existing == null)
-        {
-            return NotFound();
-        }
-
-        var category = await _updateHandler.HandleAsync(id, request);
-        if (category == null)
-        {
-            return Conflict();
-        }
-
-        return Ok(category);
+        request.Id = id;
+        var result = await _mediator.Send(new UpdateCategoryCommand(request), cancellationToken);
+        return result.ToActionResult(HttpContext);
     }
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var existing = await _getByIdHandler.HandleAsync(id);
-        if (existing == null)
-        {
-            return NotFound();
-        }
-
-        var deleted = await _deleteHandler.HandleAsync(id);
-        if (!deleted)
-        {
-            return Conflict();
-        }
-
-        return NoContent();
+        var result = await _mediator.Send(new DeleteCategoryCommand(id), cancellationToken);
+        return result.ToActionResult(HttpContext);
     }
 }

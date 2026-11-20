@@ -1,29 +1,48 @@
-﻿using System.Data.Common;
 using DonationHub.Domain.Common;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace DonationHub.Infrastructure.Interceptors;
 
 public class SoftDeleteInterceptor : SaveChangesInterceptor
 {
+    private readonly TimeProvider _timeProvider;
 
-
-    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result,
-        CancellationToken cancellationToken = new CancellationToken())
+    public SoftDeleteInterceptor(TimeProvider? timeProvider = null)
     {
-        if(eventData.Context == null)
-            return ValueTask.FromResult(result);
+        _timeProvider = timeProvider ?? TimeProvider.System;
+    }
+
+    public override InterceptionResult<int> SavingChanges(
+        DbContextEventData eventData,
+        InterceptionResult<int> result)
+    {
+        ApplySoftDelete(eventData);
+        return result;
+    }
+
+    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+        DbContextEventData eventData,
+        InterceptionResult<int> result,
+        CancellationToken cancellationToken = default)
+    {
+        ApplySoftDelete(eventData);
+        return ValueTask.FromResult(result);
+    }
+
+    private void ApplySoftDelete(DbContextEventData eventData)
+    {
+        if (eventData.Context == null)
+            return;
+
         foreach (var entry in eventData.Context.ChangeTracker.Entries())
         {
             if (entry is not { State: EntityState.Deleted, Entity: ISoftDeletable entity })
                 continue;
+
             entry.State = EntityState.Modified;
             entity.IsDeleted = true;
-            entity.DeletedAtUtc =  DateTime.UtcNow;
+            entity.DeletedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
         }
-
-        return ValueTask.FromResult(result);  
     }
 }

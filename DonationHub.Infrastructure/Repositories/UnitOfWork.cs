@@ -1,5 +1,7 @@
-﻿using DonationHub.Application.Repositories;
+﻿using DonationHub.Application.Common.Exceptions;
+using DonationHub.Application.Repositories;
 using DonationHub.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace DonationHub.Infrastructure.Repositories;
 
@@ -18,6 +20,13 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task<int> CompleteAsync(CancellationToken cancellationToken = default)
     {
-        return await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            return await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            throw new ConcurrencyConflictException("A concurrency conflict occurred.", exception);
+        }
     }
 }

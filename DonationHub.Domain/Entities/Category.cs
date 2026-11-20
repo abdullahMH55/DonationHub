@@ -1,5 +1,7 @@
 namespace DonationHub.Domain.Entities;
 using DonationHub.Domain.Common;
+using DonationHub.Domain.Errors;
+using DonationHub.Domain.ResultHandling;
 
 public class Category : Entity
 { 
@@ -50,5 +52,12 @@ public class Category : Entity
         DescriptionAr = descriptionAr;
         DescriptionEn = descriptionEn;
         UpdatedAt = time;
+    }
+
+    public Result EnsureCanBeDeleted(bool hasCampaigns)
+    {
+        return hasCampaigns
+            ? Result.Failure(CategoryDomainErrors.HasCampaigns)
+            : Result.Susccess();
     }
 }

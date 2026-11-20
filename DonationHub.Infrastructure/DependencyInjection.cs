@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Text;
 using DonationHub.Application.Common.Options;
+using DonationHub.Application.ErrorCatalogue;
 using DonationHub.Application.Features.Auth;
 using DonationHub.Application.Repositories;
 using DonationHub.Application.Services;
@@ -8,7 +10,9 @@ using DonationHub.Infrastructure.Identity;
 using DonationHub.Infrastructure.Repositories;
 using DonationHub.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
@@ -23,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<ICampaignRepository, CampaignRepository>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IdentitySeeder>();
 
@@ -56,6 +61,50 @@ public static class DependencyInjection
                 ValidIssuer = jwt["Issuer"],
                 ValidAudience = jwt["Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnChallenge = async context =>
+                {
+                    context.HandleResponse();
+
+                    if (context.Response.HasStarted)
+                        return;
+
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    context.Response.ContentType = "application/problem+json";
+
+                    var problem = new ProblemDetails
+                    {
+                        Type = "https://httpstatuses.io/401",
+                        Title = AuthErrors.Unauthorized.Message,
+                        Status = StatusCodes.Status401Unauthorized
+                    };
+                    problem.Extensions["code"] = AuthErrors.Unauthorized.Code;
+                    problem.Extensions["traceId"] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
+
+                    await context.Response.WriteAsJsonAsync(problem, options: null, contentType: "application/problem+json");
+                },
+                OnForbidden = async context =>
+                {
+                    if (context.Response.HasStarted)
+                        return;
+
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    context.Response.ContentType = "application/problem+json";
+
+                    var problem = new ProblemDetails
+                    {
+                        Type = "https://httpstatuses.io/403",
+                        Title = AuthErrors.Forbidden.Message,
+                        Status = StatusCodes.Status403Forbidden
+                    };
+                    problem.Extensions["code"] = AuthErrors.Forbidden.Code;
+                    problem.Extensions["traceId"] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
+
+                    await context.Response.WriteAsJsonAsync(problem, options: null, contentType: "application/problem+json");
+                }
             };
         });
 
